@@ -8,6 +8,9 @@
                 <hr style="min-width: 300px; border: solid 1px rgb(0, 0, 0, 0.4)">
             </div>
 
+            <div class="flex_center" style="margin-bottom: 20px;">
+                <span>이메일 {{ user_info.email }}</span>
+            </div>
             <div style="display:flex; align-items: center; justify-content: center;">
                 <span style="margin-right: 10px; color:rgba(0, 0, 0, 0.767)">프로필 이미지</span>
                 <label for="fileInput">
@@ -69,7 +72,7 @@ export default {
         confirm_profile_image() {
             this.$refs.copy_alert.style.bottom = "30px";
             setTimeout(() => {
-                this.$refs.copy_alert.style.bottom = "-33px";
+                if (this.$refs.copy_alert) this.$refs.copy_alert.style.bottom = "-33px";
             }, 2000);
             this.upload_image(getAuth().currentUser.uid)
         },

@@ -8,5 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: () => ipcRenderer.invoke('get-config'),
   setConfig: (config) => ipcRenderer.invoke('set-config', config),
   closeWindow: () => ipcRenderer.invoke('close-window'),
-  minimizeWindow: () => ipcRenderer.invoke('minimize-window')
+  minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
+  toggleTray: (state) => ipcRenderer.invoke('toggle-tray', state),
+  note_on: (data) => ipcRenderer.invoke('note-on', data)
 });

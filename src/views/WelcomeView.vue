@@ -1,11 +1,36 @@
 <template>
     <div>
         <div id="welcome_container" v-bind:style="{ background: config_data.background_color }">
-            <div id="chat_container">
-                <textarea id="chat_textarea" type="text" v-model="input_lobby_chat" ref="lobby_chat_textarea"
-                    :wrap="auto_new_line"></textarea>
+            <div id="chat_container" ref="chat_continer">
+                <label for="attach_file_input">
+                    <div id="attach_button" class="flex_center hover_pointer hover_dark">
+                        <img src="../assets/images/clip.svg" alt="" height=22>
+                    </div>
+                </label>
+                <input id="attach_file_input" type="file" style="display: none;" ref="attachInput">
+                <textarea id="chat_textarea" v-if="attach_file == undefined" type="text" v-model="input_lobby_chat"
+                    ref="lobby_chat_textarea" :wrap="auto_new_line"></textarea>
+                <div v-else style="display: flex; flex-grow: 1; align-items: center; margin-left: 10px; height: 32px;">
+                    <div>
+                        <span style="font-size: 14px;">{{ this.attach_file.name }}</span>
+                        <span style="font-size: 12px;"> ({{ (this.attach_file.size > 1024 * 1024) ?
+                            Math.round(this.attach_file.size * 100 / 1024 / 1024) / 100 + "mb" :
+                            Math.round(this.attach_file.size * 100 / 1024) / 100 + "kb" }})</span>
+                    </div>
+                    <div class="flex_center hover_dark hover_pointer"
+                        style="background-color: rgb(255, 144, 144); border-radius: 5px; width: 23px; height: 23px; margin-left: 10px;"
+                        @click="delete_attach()">
+                        <img src="../assets/images/remove.svg" alt="" width="15">
+                    </div>
+                </div>
                 <div id="send_button" class="flex_center hover_pointer hover_dark" @click="send_message()">
-                    <img src="../assets/images/send-icon.svg" alt="" height=16>
+                    <div v-if="send_progress == undefined" class="flex_center">
+                        <img v-if="!send_pending" src="../assets/images/send-icon.svg" alt="" height=16>
+                        <img v-else src="../assets/images/spinner2.svg" alt="" width=25>
+                    </div>
+                    <div v-else class="flex_center">
+                        <span style="font-size: 12px;">{{ Math.round(send_progress) }}%</span>
+                    </div>
                 </div>
             </div>
             <div v-if="data_pending == false && clipboard.length == 0" style="text-align: center; margin-top: 30px;">
@@ -18,7 +43,7 @@
                         @click="close_remove_modal(doc)">
                         <div class="real_remove_button flex_center hover_dark hover_pointer"
                             style="background-color: rgb(255, 85, 85); border-radius: 5px; width: 48px; height: 48px; transition: transform 0.2s"
-                            @click="real_delete_doc(doc.id)">
+                            @click="real_delete_doc(doc)">
                             <img src="../assets/images/remove.svg" alt="" width="24">
                             <span style="color: white">삭제</span>
                         </div>
@@ -31,6 +56,17 @@
                         <div>
                             <div v-for="(t, j) in doc.text" :key="j">
                                 {{ t }}
+                            </div>
+                            <div style="margin-top: 4px; display:flex;">
+                                <div class="hover_pointer hover_dark flex_center" v-if="doc.type == 'file'"
+                                    style=" padding: 2px 9px; background: rgb(152, 154, 255); border-radius: 5px; font-size: 14px; color: white; width: 100px; height: 28px;"
+                                    @click="download_attach(doc);">
+                                    <span v-if="!doc.download_pending" class="flex_center">
+                                        <img src="../assets/images/download.svg" alt="" height="20">
+                                        <span>다운로드</span>
+                                    </span>
+                                    <img v-else src="../assets/images/spinner1.svg" alt="" height="28">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -52,7 +88,7 @@
             @click="cancel_setting()">
         </div>
         <div :class="(my_menu_modal) ? 'setting_on' : 'setting_off'"
-            style="transition: right 0.2s; position: fixed; top: 0; width: 80%; height: 100vh; background-color: white; padding: 25px; z-index:11; border-radius: 15px 0 0 15px; box-shadow: 0 2px 5px 4px rgba(0, 0, 0, 0.212);">
+            style="transition: right 0.2s; position: fixed; top: 0; width: 85%; height: 100vh; background-color: white; padding: 25px; z-index:11; border-radius: 15px 0 0 15px; box-shadow: 0 2px 5px 4px rgba(0, 0, 0, 0.212);">
             <div style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
                 <div>
                     <div style="display: flex; align-items: center;">
@@ -61,14 +97,32 @@
                     </div>
                     <hr style="margin: 10px 0;">
                     <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                        <div>
+                            <div>시스템 트레이 활성화</div>
+                            <div>
+                                <label><input type="radio" name="tray" value="on" v-model="system_tray_on">켜기</label>
+                                <label style="margin-left: 10px;"><input type="radio" name="tray" value="off" v-model="system_tray_on">끄기</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                        <div>
+                            <div>알림 활성화</div>
+                            <div>
+                                <label><input type="radio" name="note" value="on" v-model="note_on">켜기</label>
+                                <label style="margin-left: 10px;"><input type="radio" name="note" value="off" v-model="note_on">끄기</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 10px;">
                         <span style="margin-right: 10px;">배경 색 : </span>
                         <input id="back-color" type="color" style="width: 50px; height: 30px; border: none; opacity: 1;"
                             v-model="config_data.background_color">
                     </div>
                     <div style="display: flex; align-items: center; margin-bottom: 10px;">
                         <span style="margin-right: 10px;">스크롤바 색 : </span>
-                        <input id="scrollbar-color" type="color" style="width: 50px; height: 30px; border: none; opacity: 1;"
-                            v-model="config_data.scrollbar">
+                        <input id="scrollbar-color" type="color"
+                            style="width: 50px; height: 30px; border: none; opacity: 1;" v-model="config_data.scrollbar">
                     </div>
                     <div>
                         <span>복사 시 인코딩 : </span>
@@ -90,11 +144,15 @@
                     </div>
                 </div>
                 <div style="display:flex; flex-direction: column;">
-                    <div class="hover_pointer" style="display:flex; align-items: center; margin-bottom: 10px;" @click="profile_edit()">
-                        <img src="../assets/images/edit.svg" alt="" width="24"><span>프로필 수정</span>
+                    <div style="display:flex; margin-bottom: 10px;">
+                        <div class="flex_center hover_pointer hover_underline" @click="profile_edit()">
+                            <img src="../assets/images/edit.svg" alt="" width="24"><span>프로필 수정</span>
+                        </div>
                     </div>
-                    <div class="hover_pointer" style="display:flex; align-items: center;" @click="logout_button">
-                        <img src="../assets/images/logout.svg" alt="" width="24"><span>로그아웃</span>
+                    <div style="display:flex;">
+                        <div class="flex_center hover_pointer hover_underline" @click="logout_button">
+                            <img src="../assets/images/logout.svg" alt="" width="24"><span>로그아웃</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -105,19 +163,33 @@
                 :src="user_info.photoURL == null ? default_user_image : user_info.photoURL" alt="">
         </div>
         <div class="flex_center" style="position: fixed; bottom: -33px; width: 100%; height: 33px; transition: bottom 0.2s"
+            ref="attach_more_alert">
+            <div class="flex_center"
+                style="background-color: rgba(0, 0, 0, 0.719); color: white; padding: 0 32px; border-radius: 100px; font-size: 13px; height: 100%">
+                150mb를 초과할 수 없어요!
+            </div>
+        </div>
+        <div class="flex_center" style="position: fixed; bottom: -33px; width: 100%; height: 33px; transition: bottom 0.2s"
             ref="copy_alert">
             <div class="flex_center"
                 style="background-color: rgba(0, 0, 0, 0.719); color: white; padding: 0 32px; border-radius: 100px; font-size: 13px; height: 100%">
                 클립보드에 복사 되었어요!
             </div>
         </div>
+        <div class="flex_center" style="position: fixed; bottom: -33px; width: 100%; height: 33px; transition: bottom 0.2s"
+            ref="expire_alert">
+            <div class="flex_center"
+                style="background-color: rgba(0, 0, 0, 0.719); color: white; padding: 0 32px; border-radius: 100px; font-size: 13px; height: 100%">
+                다운로드 기간 만료됨!
+            </div>
+        </div>
     </div>
 </template>
 
 <script>
-import { getFirestore, collection, query, orderBy, addDoc, onSnapshot, doc, deleteDoc, limit } from "firebase/firestore";
+import { getFirestore, collection, query, orderBy, addDoc, updateDoc, onSnapshot, doc, getDoc, deleteDoc, limit } from "firebase/firestore";
 import default_user_image from "../assets/images/user.svg"
-import { getStorage, ref } from "firebase/storage";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable } from "firebase/storage";
 
 export default {
     props: {
@@ -126,7 +198,9 @@ export default {
     },
     data() {
         return {
+            init_time: undefined,
             time_now: undefined,
+            utc_now: undefined,
             input_lobby_chat: '',
             auto_new_line: 'on',
             clipboard: [],
@@ -136,11 +210,24 @@ export default {
             config_backup: undefined,
             setting_ok: 0,
             data_pending: true,
+            attach_file: undefined,
+            attach_alert: false,
+            expire_alert: false,
+            send_pending: false,
+            send_progress: undefined,
+            system_tray_on: undefined,
+            note_on: undefined,
         }
     },
     watch: {
         input_lobby_chat(newValue, oldValue) {
             this.setTextAreaHeight();
+        },
+        system_tray_on(newValue, oldValue) {
+            this.config_data.tray_icon = this.system_tray_on;
+        },
+        note_on(newValue, oldValue) {
+            this.config_data.note = this.note_on;
         },
     },
     methods: {
@@ -149,15 +236,14 @@ export default {
             this.$refs.lobby_chat_textarea.style.height = (this.$refs.lobby_chat_textarea.scrollHeight + 1) + "px"
         },
         async send_message() {
-            await this.$axios.get("http://worldtimeapi.org/api/ip").then(res => {
+            if (this.send_pending == true) return;
+            if (this.input_lobby_chat.length == 0 && this.attach_file == undefined) return;
+            this.send_pending = true;
+            let time_to_use = await this.$axios.get("http://worldtimeapi.org/api/ip").then(res => {
                 this.time_now = new Date(res.data.datetime.split(".")[0]);
-            });
-            let text_buffer = this.input_lobby_chat;
-            this.input_lobby_chat = '';
-            setTimeout(() => {
-                this.setTextAreaHeight();
-            }, 5);
-            let raw_localTime = await this.$axios.get("http://worldtimeapi.org/api/ip").then(res => res.data);
+                return res.data;
+            }).catch(() => {location.reload();})
+            let raw_localTime = time_to_use;
             let local = raw_localTime.timezone.split("/")[1];
             let utc_time = raw_localTime.utc_datetime;
             let tt = raw_localTime.datetime.split("T");
@@ -166,12 +252,71 @@ export default {
             let raw_time = raw_time_ms[0];
             let ms = raw_time_ms[1];
             let time = raw_date + " " + raw_time + " " + ms;
-            const docRef = await addDoc(collection(getFirestore(), this.user_info.uid), {
+            if (this.attach_file != undefined) {
+                const docRef = doc(getFirestore(), "storage", "current");
+                const docSnap = await getDoc(docRef);
+
+                // 파이어 스토어에서 남은 용량 검사
+                const nokori = docSnap.data().use;
+                if (nokori + this.attach_file.size > 4.5 * 1024 * 1024 * 1024) {
+                    // if (nokori + this.attach_file.size > 10) {
+                    this.send_pending = false;
+                } else {
+                    const storage = getStorage();
+                    const storageRef = ref(storage, this.user_info.uid + "-" + time + "-" + this.attach_file.name);
+                    // uploadBytes(storageRef, this.attach_file).then((snapshot) => {
+                    //     updateDoc(docRef, {
+                    //         use: nokori + this.attach_file.size
+                    //     });
+                    //     this.sending(this.attach_file.name, time, local, utc_time, 'file');
+                    //     this.attach_file = undefined;
+                    //     this.send_pending = false;
+                    // })
+
+                    const uploadTask = uploadBytesResumable(storageRef, this.attach_file);
+
+                    uploadTask.on('state_changed',
+                        (snapshot) => {
+                            // Observe state change events such as progress, pause, and resume
+                            // Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
+                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                            this.send_progress = progress;
+                        },
+                        (error) => {
+                            // Handle unsuccessful uploads
+                        }, 
+                        () => {
+                            updateDoc(docRef, {
+                                use: nokori + this.attach_file.size
+                            });
+                            this.sending(this.attach_file.name, time, local, utc_time, 'file');
+                            this.attach_file = undefined;
+                            this.send_pending = false;
+                            this.send_progress = undefined;
+                        }
+                    );
+                }
+
+            } else {
+                let text_buffer = this.input_lobby_chat;
+                this.input_lobby_chat = '';
+                setTimeout(() => {
+                    this.setTextAreaHeight();
+                }, 5);
+                await this.sending(text_buffer, time, local, utc_time, 'text');
+                this.send_pending = false;
+            }
+        },
+        async sending(text_buffer, time, local, utc_time, type) {
+
+            await addDoc(collection(getFirestore(), this.user_info.uid), {
                 text: text_buffer,
                 time: time,
                 local: local,
                 utc: utc_time,
+                type: type,
             });
+
         },
         async load_firestore() {
             const myRef = collection(getFirestore(), this.user_info.uid);
@@ -186,7 +331,10 @@ export default {
                         let date = raw_date[0].split("-");
                         let time = raw_date[1].split(":");
                         let save_time = new Date(date[0], date[1] - 1, date[2], time[0], time[1], time[2]);
-                        this.clipboard.unshift({ text: text.split(/\n/g), time: save_time, diff: Math.max(0, this.get_time_difference(save_time)), local: res.local, id: doc.id, delete_modal: false });
+                        if (this.config_data.note == 'on' && res.utc > this.utc_now) {
+                            window.electronAPI.note_on({message: text, sound: false});
+                        }
+                        this.clipboard.unshift({ text: text.split(/\n/g), time: save_time, diff: Math.max(0, this.get_time_difference(save_time)), local: res.local, id: doc.id, delete_modal: false, type: res.type, name_time: res.time, download_pending: false });
                     }
                     if (change.type === "removed") {
                         let doc = change.doc;
@@ -280,8 +428,13 @@ export default {
         close_remove_modal(e) {
             e.delete_modal = false;
         },
-        real_delete_doc(id) {
-            deleteDoc(doc(getFirestore(), this.user_info.uid, id));
+        real_delete_doc(d) {
+            deleteDoc(doc(getFirestore(), this.user_info.uid, d.id));
+            if (d.type == 'file') {
+                const storage = getStorage();
+                const desertRef = ref(storage, `${this.user_info.uid}-${d.name_time}-${d.text[0]}`);
+                deleteObject(desertRef)
+            }
         },
         async logout_button(e) {
             e.stopPropagation();
@@ -294,12 +447,21 @@ export default {
                 Object.keys(this.config_data).forEach(key => {
                     this.config_backup[key] = this.config_data[key];
                 });
+            } else {
+                this.system_tray_on = this.config_data.tray_icon;
+                this.note_on = this.config_data.note;
             }
         },
         save_setting() {
-            const config = this.config_data;
-            window.electronAPI.setConfig(config).then(() => {
-                this.config_backup = config;
+            if (this.config_backup.tray_icon == 'on' && this.config_data.tray_icon == 'off') {
+                window.electronAPI.toggleTray('off');
+            } else if (this.config_backup.tray_icon == 'off' && this.config_data.tray_icon == 'on') {
+                window.electronAPI.toggleTray('on');
+            }
+            window.electronAPI.setConfig(this.config_data).then(() => {
+                Object.keys(this.config_data).forEach(key => {
+                    this.config_backup[key] = this.config_data[key];
+                });
             });
             this.setting_ok = 1;
             setTimeout(() => {
@@ -314,18 +476,77 @@ export default {
         },
         profile_edit() {
             this.$emit('go_profile_edit');
+        },
+        delete_attach() {
+            this.attach_file = undefined;
+        },
+        download_attach(doc) {
+            doc.download_pending = true;
+            const storage = getStorage();
+            const pathReference = ref(storage, `${this.user_info.uid}-${doc.name_time}-${doc.text[0]}`);
+            getDownloadURL(pathReference)
+                .then((url) => {
+                    // `url` is the download URL for 'images/stars.jpg'
+
+                    // This can be downloaded directly:
+                    const xhr = new XMLHttpRequest();
+                    xhr.responseType = 'blob';
+                    xhr.onload = (event) => {
+                        const blob = xhr.response;
+
+                        const link = document.createElement('a');
+                        link.href = window.URL.createObjectURL(blob);
+                        link.download = '(download)' + doc.text[0].split(".")[0];
+                        link.click();
+                        window.URL.revokeObjectURL(link.href)
+                    };
+                    xhr.open('GET', url);
+                    xhr.send();
+                })
+                .catch((error) => {
+                    this.$refs.expire_alert.style.bottom = '30px';
+                    setTimeout(() => {
+                        this.$refs.expire_alert.style.bottom = '-33px';
+                    }, 2500)
+                    // Handle any errors
+                })
+                .finally(() => {
+                    doc.download_pending = false;
+                });
         }
     },
     mounted() {
         this.setTextAreaHeight();
+        this.$refs.attachInput.addEventListener('change', (f) => {
+            const file = f.target.files[0];
+            if (file.size > 150 * 1024 * 1024) {
+                this.$refs.attach_more_alert.style.bottom = '30px';
+                setTimeout(() => {
+                    this.$refs.attach_more_alert.style.bottom = '-33px';
+                }, 2500);
+            }
+            else this.attach_file = file;
+        });
+        this.$refs.chat_continer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            this.attach_file = e.dataTransfer.files;
+            if (this.attach_file.length > 0) {
+                this.attach_file = this.attach_file[0];
+            }
+        });
     },
     async created() {
         await this.$axios.get("http://worldtimeapi.org/api/ip").then(res => {
             this.time_now = new Date(res.data.datetime.split(".")[0]);
+            this.utc_now = res.data.utc_datetime;
+        }).catch(() => {
+            location.reload();
         });
         this.set_timer();
         this.load_firestore();
         this.config_backup = {};
+        this.system_tray_on = this.config_data.tray_icon;
+        this.note_on = this.config_data.note;
         Object.keys(this.config_data).forEach(key => {
             this.config_backup[key] = this.config_data[key];
         });
@@ -368,7 +589,15 @@ export default {
     background-color: white;
 }
 
+#attach_button {
+    background: rgb(235, 235, 235);
+    height: 28px;
+    width: 32px;
+    margin-top: 2px;
+}
+
 #chat_textarea {
+    margin-left: 5px;
     min-height: 32px;
     max-height: calc(100vh * 0.5);
     resize: none;
@@ -483,6 +712,6 @@ export default {
 }
 
 .setting_off {
-    right: -80%;
+    right: -86%;
 }
 </style>

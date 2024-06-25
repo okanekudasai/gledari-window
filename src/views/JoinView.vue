@@ -134,15 +134,16 @@ export default {
             // this.$emit('join_process', { email: this.email, password: this.password });
             const auth = getAuth()
             createUserWithEmailAndPassword(auth, this.email, this.password)
-                .then((userCredential) => {
+                .then(async (userCredential) => {
                     if (this.image_src == undefined) return;
                     const user = userCredential.user;
                     this.upload_image(user.uid);
                     const storage = getStorage();
                     const spaceRef = ref(storage, user.uid + '.jpg');
-                    updateProfile(auth.currentUser, {
+                    await updateProfile(auth.currentUser, {
                         photoURL: 'https://firebasestorage.googleapis.com/v0/b/' + spaceRef.bucket + '/o/' + user.uid + '?alt=media&token='
                     })
+                    location.reload();
                 })
                 .catch((error) => {
                     console.log(error);

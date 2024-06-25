@@ -90,15 +90,9 @@ export default {
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 this.user_info = {...getAuth().currentUser};
-                setTimeout(() => {
-                    if (getAuth().currentUser.photoURL != null) this.user_info.photoURL = getAuth().currentUser.photoURL;
-                }, 333);
-                setTimeout(() => {
-                    if (getAuth().currentUser.photoURL != null) this.user_info.photoURL = getAuth().currentUser.photoURL;
-                }, 666);
-                setTimeout(() => {
-                    if (getAuth().currentUser.photoURL != null) this.user_info.photoURL = getAuth().currentUser.photoURL;
-                }, 1000);
+                // setTimeout(() => {
+                //     if (getAuth().currentUser.photoURL != null) this.user_info.photoURL = getAuth().currentUser.photoURL;
+                // }, 1000);
                 this.view_resolver = "welcome-view";
             } else {
                 this.view_resolver = "login-view";

@@ -18,6 +18,10 @@ html * {
     cursor: pointer;
 }
 
+.hover_underline:hover {
+    text-decoration: underline;
+}
+
 .border_dashed {
     border: 2px dashed;
 }

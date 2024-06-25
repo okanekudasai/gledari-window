@@ -1,68 +1,73 @@
 // 빌드 시 컨피그 파일을 생성하는 조건에서 true를 삭제하기!
 
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, Tray, Menu,ipcMain } = require('electron');
 const path = require('node:path');
 const fs = require('fs');
+const notifier = require('node-notifier');
 
-const express = require('express');
+// const express = require('express');
 
-const expressApp = express();
-const port = 7745; 
+// const expressApp = express();
+// const port = 7745; 
 
 if (require('electron-squirrel-startup')) {
     app.quit();
 }
 
-// path.join으로 파일 경로 생성
-const filePath = './icon.png'
+// // path.join으로 파일 경로 생성
+// const filePath = './icon.png'
 
-// 방법 1: fs.existsSync 사용
-if (fs.existsSync(filePath)) {
-    console.log('there is ');
-} else {
-    console.log('none');
-}
+// // 방법 1: fs.existsSync 사용
+// if (fs.existsSync(filePath)) {
+//     console.log('there is ');
+// } else {
+//     console.log('none');
+// }
 
 const configFilePath = path.join(app.getPath('userData'), 'config.json')
 
 const defaultData = {
+    note: 'on',
+    tray_icon: 'on',
     background_color: '#FFFAF6',
     encoding_type: 'utf-8',
     scrollbar: '#babd34'
 };
 
 let mainWindow;
+let tray;
 
 const createWindow = () => {
     mainWindow = new BrowserWindow({
         width: 450,
         height: 600,
+        minWidth: 370,
         title: '글다리',
         frame: false,
         // icon: './icon.png',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
-            contextIsolation: true, 
-            enableRemoteModule: false, 
+            contextIsolation: true,
+            enableRemoteModule: false,
         },
     });
 
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
         mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     } else {
-        expressApp.use('/', express.static(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}`)));
-        const server = expressApp.listen(port, () => {
-            console.log(`Express server is running on http://localhost:${port}/index.html`);
-            mainWindow.loadURL(`http://localhost:${port}/index.html`)
-        });
-       
+        // expressApp.use('/', express.static(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}`)));
+        // const server = expressApp.listen(port, () => {
+        //     console.log(`Express server is running on http://localhost:${port}/index.html`);
+        //     mainWindow.loadURL(`http://localhost:${port}/index.html`)
+        // });
+        mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
     }
 };
 
 app.whenReady().then(() => {
 
-    if (!fs.existsSync(configFilePath) || true) {
+    if (!fs.existsSync(configFilePath)) {
         fs.writeFileSync(configFilePath, JSON.stringify(defaultData));
     }
 
@@ -73,6 +78,26 @@ app.whenReady().then(() => {
             createWindow();
         }
     });
+
+    const sys_tray = JSON.parse(fs.readFileSync(configFilePath)).tray_icon;
+
+    if (sys_tray == "on") {
+        tray = new Tray('./gledari.png');
+        const contextMenu = Menu.buildFromTemplate([
+            { label: '끝내기', click: () => { app.quit(); } },
+        ]);
+
+        tray.setToolTip('My Electron Forge App');
+        tray.setContextMenu(contextMenu);
+
+        tray.on('click', () => {
+            if (mainWindow?.isVisible()) {
+                mainWindow.hide();
+            } else {
+                mainWindow?.show();
+            }
+        });
+    }
 });
 
 app.on('window-all-closed', () => {
@@ -110,5 +135,49 @@ ipcMain.handle('minimize-window', () => {
 });
 
 ipcMain.handle('close-window', () => {
-    mainWindow.close();
+    const state = JSON.parse(fs.readFileSync(configFilePath)).tray_icon
+    if (state == 'on') {
+        mainWindow.hide();
+    } else if (state == 'off') {
+        mainWindow.close();
+    }
 });
+
+ipcMain.handle('toggle-tray', (event, state) => {
+    if (state == 'on') {
+        tray = new Tray('./gledari.png');
+        const contextMenu = Menu.buildFromTemplate([
+            { label: '끝내기', click: () => { app.quit(); } },
+        ]);
+
+        tray.setToolTip('My Electron Forge App');
+        tray.setContextMenu(contextMenu);
+
+        tray.on('click', () => {
+            if (mainWindow?.isVisible()) {
+                mainWindow.hide();
+            } else {
+                mainWindow?.show();
+            }
+        });
+    } else if (state == 'off') {
+        tray.destroy();
+    }
+})
+
+ipcMain.handle('note-on', (event, data) => {
+    if (mainWindow.isVisible) return;
+    notifier.notify({
+        appID: '글다리',
+        title: data.message,
+        message: String(new Date()).split(" ")[4],
+        icon: './gledari.png', // 선택적: 알림 아이콘 설정
+        sound: data.sound, // 선택적: 알림 사운드 설정
+        wait: true // 선택적: 알림을 닫기 전까지 프로그램 실행을 일시 중지
+    });
+})
+
+notifier.on('click', function (notifierObject, options, event) {
+    mainWindow.show()
+});
+  
