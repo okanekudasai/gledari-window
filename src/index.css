@@ -1,0 +1,39 @@
+html * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.flex_center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.hover_dark:hover {
+    filter: brightness(90%);
+}
+
+.hover_pointer:hover {
+    cursor: pointer;
+}
+
+.border_dashed {
+    border: 2px dashed;
+}
+
+textarea:focus {
+    outline: none;
+}
+
+.display_none {
+    display: none;
+}
+
+.display_block {
+    display: block;
+}
+
+input:focus {
+    outline: none;
+}
