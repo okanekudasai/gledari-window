@@ -1,7 +1,7 @@
 // 빌드 시 컨피그 파일을 생성하는 조건에서 true를 삭제하기!
 
 
-const { app, BrowserWindow, Tray, Menu,ipcMain } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain } = require('electron');
 const path = require('node:path');
 const fs = require('fs');
 const notifier = require('node-notifier');
@@ -24,6 +24,7 @@ if (require('electron-squirrel-startup')) {
 // } else {
 //     console.log('none');
 // }
+
 
 const configFilePath = path.join(app.getPath('userData'), 'config.json')
 
@@ -65,41 +66,53 @@ const createWindow = () => {
     }
 };
 
-app.whenReady().then(() => {
+const gotTheLock = app.requestSingleInstanceLock()
 
-    if (!fs.existsSync(configFilePath)) {
-        fs.writeFileSync(configFilePath, JSON.stringify(defaultData));
-    }
-
-    createWindow();
-
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow();
+if (!gotTheLock) {
+    app.quit()
+} else {
+    app.on('second-instance', (event, commandLine, workingDirectory) => {
+        // Someone tried to run a second instance, we should focus our window.
+        if (mainWindow) {
+            if (mainWindow.isMinimized() || !mainWindow.isVisible()) mainWindow.restore()
+            mainWindow.focus()
         }
-    });
+    })
+    app.whenReady().then(() => {
 
-    const sys_tray = JSON.parse(fs.readFileSync(configFilePath)).tray_icon;
+        if (!fs.existsSync(configFilePath)) {
+            fs.writeFileSync(configFilePath, JSON.stringify(defaultData));
+        }
 
-    if (sys_tray == "on") {
-        tray = new Tray('./gledari.png');
-        const contextMenu = Menu.buildFromTemplate([
-            { label: '끝내기', click: () => { app.quit(); } },
-        ]);
+        createWindow();
 
-        tray.setToolTip('My Electron Forge App');
-        tray.setContextMenu(contextMenu);
-
-        tray.on('click', () => {
-            if (mainWindow?.isVisible()) {
-                mainWindow.hide();
-            } else {
-                mainWindow?.show();
+        app.on('activate', () => {
+            if (BrowserWindow.getAllWindows().length === 0) {
+                createWindow();
             }
         });
-    }
-});
 
+        const sys_tray = JSON.parse(fs.readFileSync(configFilePath)).tray_icon;
+
+        if (sys_tray == "on") {
+            tray = new Tray('./gledari.png');
+            const contextMenu = Menu.buildFromTemplate([
+                { label: '끝내기', click: () => { app.quit(); } },
+            ]);
+
+            tray.setToolTip('My Electron Forge App');
+            tray.setContextMenu(contextMenu);
+
+            tray.on('click', () => {
+                if (mainWindow?.isVisible()) {
+                    mainWindow.hide();
+                } else {
+                    mainWindow?.show();
+                }
+            });
+        }
+    });
+}
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
@@ -180,4 +193,3 @@ ipcMain.handle('note-on', (event, data) => {
 notifier.on('click', function (notifierObject, options, event) {
     mainWindow.show()
 });
-  
