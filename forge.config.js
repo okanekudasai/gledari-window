@@ -4,12 +4,15 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true,
+    icon: './gledari.ico'
   },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
+      config: {
+        setupIcon: './gledari.ico'
+      },
     },
     {
       name: '@electron-forge/maker-zip',
@@ -17,11 +20,23 @@ module.exports = {
     },
     {
       name: '@electron-forge/maker-deb',
-      config: {},
+      config: {
+        // icon: './gledari.png'
+      },
     },
     {
       name: '@electron-forge/maker-rpm',
       config: {},
+    },
+    // 맥에서만 동작하는듯
+    // https://www.electronforge.io/config/makers/dmg
+    {
+        name: '@electron-forge/maker-dmg',
+        config: {
+        //   background: './gledari.png',
+        //   format: 'ULFO',
+        //   icon: './gledari.png'
+        }
     },
   ],
   plugins: [

@@ -14,7 +14,15 @@ if (require('electron-squirrel-startup')) {
     app.quit();
 }
 
-console.log(__dirname)
+// path.join으로 파일 경로 생성
+const filePath = './icon.png'
+
+// 방법 1: fs.existsSync 사용
+if (fs.existsSync(filePath)) {
+    console.log('there is ');
+} else {
+    console.log('none');
+}
 
 const configFilePath = path.join(app.getPath('userData'), 'config.json')
 
@@ -27,12 +35,12 @@ const defaultData = {
 let mainWindow;
 
 const createWindow = () => {
-    console.log("-----"+__dirname)
     mainWindow = new BrowserWindow({
         width: 450,
         height: 600,
         title: '글다리',
         frame: false,
+        // icon: './icon.png',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true, 

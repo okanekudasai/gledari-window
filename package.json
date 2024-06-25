@@ -1,8 +1,8 @@
 {
   "name": "my-vue-app",
-  "productName": "my-vue-app",
+  "productName": "글다리",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "글다리는 기기간 텍스트와 파일을 전송하기위한 크로스 플랫폼 프로젝트입니다.",
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "electron-forge start",
@@ -14,6 +14,7 @@
   "devDependencies": {
     "@electron-forge/cli": "^7.4.0",
     "@electron-forge/maker-deb": "^7.4.0",
+    "@electron-forge/maker-dmg": "^7.4.0",
     "@electron-forge/maker-rpm": "^7.4.0",
     "@electron-forge/maker-squirrel": "^7.4.0",
     "@electron-forge/maker-zip": "^7.4.0",
