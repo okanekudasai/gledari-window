@@ -1,7 +1,7 @@
 // 빌드 시 컨피그 파일을 생성하는 조건에서 true를 삭제하기!
 
 
-const { app, BrowserWindow, Tray, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, nativeImage, Tray, Menu, ipcMain } = require('electron');
 const path = require('node:path');
 const fs = require('fs');
 const notifier = require('node-notifier');
@@ -27,6 +27,10 @@ if (require('electron-squirrel-startup')) {
 
 
 const configFilePath = path.join(app.getPath('userData'), 'config.json')
+const trayIconPath = './gledari.png'
+// const trayIconPath = nativeImage.createFromPath('gledari.png')
+// const trayIconPath = path.join(__dirname, 'gledari.png')
+console.log("------", trayIconPath);
 
 const defaultData = {
     note: 'on',
@@ -74,7 +78,8 @@ if (!gotTheLock) {
     app.on('second-instance', (event, commandLine, workingDirectory) => {
         // Someone tried to run a second instance, we should focus our window.
         if (mainWindow) {
-            if (mainWindow.isMinimized() || !mainWindow.isVisible()) mainWindow.restore()
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.show();
             mainWindow.focus()
         }
     })
@@ -95,12 +100,12 @@ if (!gotTheLock) {
         const sys_tray = JSON.parse(fs.readFileSync(configFilePath)).tray_icon;
 
         if (sys_tray == "on") {
-            tray = new Tray('./gledari.png');
+            tray = new Tray(trayIconPath);
             const contextMenu = Menu.buildFromTemplate([
                 { label: '끝내기', click: () => { app.quit(); } },
             ]);
 
-            tray.setToolTip('My Electron Forge App');
+            tray.setToolTip('글다리');
             tray.setContextMenu(contextMenu);
 
             tray.on('click', () => {
@@ -158,12 +163,12 @@ ipcMain.handle('close-window', () => {
 
 ipcMain.handle('toggle-tray', (event, state) => {
     if (state == 'on') {
-        tray = new Tray('./gledari.png');
+        tray = new Tray(trayIconPath);
         const contextMenu = Menu.buildFromTemplate([
             { label: '끝내기', click: () => { app.quit(); } },
         ]);
 
-        tray.setToolTip('My Electron Forge App');
+        tray.setToolTip('글다리');
         tray.setContextMenu(contextMenu);
 
         tray.on('click', () => {
